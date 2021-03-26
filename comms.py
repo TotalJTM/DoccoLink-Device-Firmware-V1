@@ -4,6 +4,7 @@ blutooth, and cellular communications
 """
 import network
 import urequests
+from machine import UART
 from time import sleep_ms, ticks_ms, ticks_diff
 from config import communication_configuration as commconf
 from dev_funcs import printline
@@ -244,3 +245,33 @@ class Appointment:
 		self.answer = answer
 		self.appointment_date_time = appointment_date_time
 		self.cancelled = cancelled
+
+#class to handle serial communications input and output
+class Computer_Comms:
+	def __init__(self):
+		#try to create UART object that will communicate with the computer (serial port 0)
+		try:
+			self.uart = UART(0,115200)
+		except:
+			printline("Tried to start UART with REPL active, no UART obj created")
+
+	#function that waits (in a while loop) for specific USB commands
+	#takes a time (in ms) to wait for and returns a message (if received) or None
+	def wait_for_message(self, wait_time):
+		#set initial time with current tick count
+		init_time = ticks_ms()
+		#read from UART, will most likely return None here
+		message = self.uart.readline()
+		#wait until message reveived or until timeout reached
+		while message is None and \
+		(ticks_diff(ticks_ms(),init_time) < self.timeout):
+			#read from UART
+			message = self.uart.readline()
+
+		#if there was a message
+		if message:
+			#return the message
+			return message
+		else:
+			#otherwise return nothing
+			return None

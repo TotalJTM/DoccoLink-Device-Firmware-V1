@@ -68,7 +68,7 @@ class Recorded_Time:
 		self.day = int(pdate[2])
 		self.hour = int(ptime[0])
 		self.minute = int(ptime[1])
-		self.second = int(ptime[2])
+		self.second = int(float(ptime[2]))
 		#is stored as an array, used to see elapsed sys time 
 		#(year, month, day, hour, minute, second, weekday, yearday)
 		self.sys_time_at_creation = time.localtime()
