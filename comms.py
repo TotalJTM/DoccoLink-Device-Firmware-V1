@@ -4,6 +4,7 @@ blutooth, and cellular communications
 """
 import network
 import urequests
+import usocket as socket
 from machine import UART
 from time import sleep_ms, ticks_ms, ticks_diff
 from config import communication_configuration as commconf
@@ -13,6 +14,7 @@ from dev_funcs import printline
 class Dev_WiFi:
 	def __init__(self, wifi_credentials):
 		self.stored_networks = wifi_credentials
+		self.websocket = None
 		self.wifi = None
 		self.timeout = 4000
 
@@ -48,12 +50,6 @@ class Dev_WiFi:
 		self.wifi = None
 		#return false, indicating a failed connection to wifi
 		return False
-
-	#function to start ESP32 access point
-	#allows the ESP32 to be accessed by logging into the wifi
-	#and accessing a web address
-	def start_ap(self):
-		return None
 
 	#function to send message to specified URL
 	#message should be a JSON string
@@ -95,6 +91,166 @@ class Dev_WiFi:
 		success, reply, unused_var = handle_message_replies(message_type, reply)
 		#return result of handling
 		return success, reply
+
+	#function to start ESP32 access point
+	#allows the ESP32 to be accessed by logging into the wifi
+	#and accessing a web address
+	def start_ap(self, dev_id=None):
+		#create wifi object in access point mode
+		self.wifi = network.WLAN(network.AP_IF)
+		#make network inactive, then active again (solves some weird bug where AP mode doesnt work)
+		self.wifi.active(False)
+		self.wifi.active(True)
+		#construct SSID with device id (if passed in)
+		constructed_ssid = commconf.AP_SSID
+		if dev_id:
+			constructed_ssid += "-" + str(dev_id)
+		#configure access point with SSID and password defined in config
+		self.wifi.config(essid=constructed_ssid, password=commconf.AP_PASSWORD)
+		#set initial time we started waiting for network to start
+		init_time = ticks_ms()
+		#wait until network is successfully started or until timeout reached
+		while not self.wifi.active() and (ticks_diff(ticks_ms(),init_time) < self.timeout):
+			pass
+		#check that ap mode is actually working
+		if self.wifi.active():
+			#print debug info
+			printline(self.wifi.ifconfig())
+			#start socket server
+			self.websocket = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
+			#bind socket to port 80 and listen for traffic from 5 connections
+			self.websocket.bind(('', 80))
+			self.websocket.listen(5)
+			#return true if working
+			return True
+		else:
+			#set wifi object to None
+			self.wifi = None
+			#set socket object to None
+			self.websocket = None
+			#otherwise return false
+			return False
+
+	#function to handle webserver traffic
+	#should be run in a loop as this function is non blocking
+	def listen_serve_webserver(self):
+		return_data = []
+		#accept websocket connection, get connection object and address
+		conn, addr = self.websocket.accept()
+		printline("Got a connection from " + str(addr))
+		#receive 1024 bytes of data sent to server (content request)
+		request = conn.recv(1024)
+		#turn received data into a string
+		request = str(request)
+  		printline("Content = %s" % request)
+  		response = ""
+  		if 21 > request.find("/favicon.ico") > 0:
+  			printline("favicon served : " + str(request.find("/favicon.ico")))
+  			favi_file = open("favicon.ico", 'r')
+  			response = favi_file.read()
+
+  		elif 21 > request.find("/config/") > 0:
+  			printline("config served : " + str(request.find("/config/")))
+			#craft response to send to client
+			response = "<html>" + self.head_html() + self.config_html() + "</html>"
+
+		elif 21 > request.find("/handle_config/") > 0:
+  			printline("handle_config served : " + str(request.find("/handle_config/")))
+
+  			new_ssid = self.get_var_from_string(request, 'ssid')
+  			if new_ssid != "":
+				return_data.append({"network_ssid": new_ssid})
+
+  			new_password = self.get_var_from_string(request, 'password')
+  			if new_password != "":
+				return_data.append({"network_password": new_password})
+
+  			new_start_quiet = self.get_var_from_string(request, 'start_quiet')
+  			if new_start_quiet != "":
+				return_data.append({"quiet_hour_start": new_start_quiet})
+
+  			new_end_quiet = self.get_var_from_string(request, 'end_quiet')
+  			if new_end_quiet != "":
+				return_data.append({"quiet_hour_end": new_end_quiet})
+
+			#craft response to send to client
+			response = "<html>" + self.head_html() + \
+			self.config_html("<h2>Your settings have been updated</h2>") + "</html>"
+
+		else:
+			#craft response to send to client
+			response = "<html>" + self.head_html() + self.index_html() + "</html>"
+		#send header data to client
+		conn.send("HTTP/1.1 200 OK\n")
+		conn.send("Content-Type: text/html\n")
+		conn.send("Connection: close\n\n")
+		#send defined response to client
+		conn.sendall(response)
+		#close socket connection
+		conn.close()
+
+
+
+	#function to generate header html
+	def head_html(self):
+		return """
+				<head>
+					<meta name="viewport" content="width=device-width, initial-scale=1">
+				</head>
+			"""
+
+	#function to generate body html
+	def config_html(self, extra_text=""):
+		content = """
+				<body>
+				"""
+		content += extra_text + \
+			"""
+					<form action="/handle_config/" method="post">
+						<h3>Network credential to add</h3>
+						<p>Add new network credentials here</p>
+						<label for="ssid">Network SSID:</label>
+						<input type="text" id="ssid" name="ssid"><br><br>
+						<label for="password">Network Password:</label>
+						<input type="text" id="password" name="password"><br><br>
+						<h3>Choose quiet hours for your device</h3>
+						<p>Define your hours using military time (0-24 where 0 is midnight)</p>
+						<label for="start_quiet">Start Quiet Hour:</label>
+						<input type="text" id="start_quiet" name="start_quiet"><br><br>
+						<label for="end_quiet">End Quiet Hour:</label>
+						<input type="text" id="end_quiet" name="end_quiet"><br><br>
+						<input type="submit" value="Submit">
+					</form>
+				</body>
+			"""
+		return content
+
+	#function to generate body html
+	def index_html(self):
+		return """
+			<body>
+				<h1>Welcome to the DoccoLink Device Configuration</h1>
+				<p>If you can see this, you are in the DoccoLink Device WebServer.</p>
+				<a href="/config/">Click here to go to the configuration page</a>
+			</body>
+			"""
+
+	#function to find the value in a key/value pair (formatted like name=val&2ndname=val2)
+	#takes an input string that will be searched for a keyword desired_var
+	def get_var_from_string(self, inp_string, desired_var):
+		var_loc = inp_string.find(desired_var)
+		if var_loc >= 0:
+			#offset for 'name=' characters
+			var_loc += len(desired_var)+1
+			new_value = ""
+			while var_loc+1 < len(inp_string):
+				if inp_string[var_loc] == '&':
+					break
+				new_value += inp_string[var_loc]
+				var_loc += 1
+			return new_value
+		else:
+			return None
 
 #class to handle blutooth communications
 #was not implemented to save time

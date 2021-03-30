@@ -51,9 +51,17 @@ class communication_configuration:
 	#URL path where appointment reminder replies will be sent
 	REPLY_MESSAGE_PATH 	= "/devicemessagehandler/alpha/v1/"
 
+	#access point specific variables
+	#access point ssid that is shown when user trys to connect to wifi network
+	AP_SSID				= "Doccolink-Device"
+	AP_PASSWORD			= ""
+
 #class to store any and all extra parameters
 class extra_params:
 	#delay (in ms) for time between changing FET state and next command
 	ACTIVATION_DELAY 	= const(3)
 	#debug setting
 	DEBUG 				= True
+	#number of fingerprint reads to enroll patient fingerprint
+	#MUST BE 1-5, CANNOT EXCEED 5
+	NUM_OF_FINGERPRINT_SCANS 	= const(5)

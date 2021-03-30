@@ -200,38 +200,63 @@ class Fingerprint:
 			#if unsuccessful removal or no template, return false
 			return False
 
+	#function that removes all stored templates from the fingerprint database
+	#function takes no arguments, returns true or false depending on success
+	def remove_all_fingerprints(self):
+		#clear the fingerprint database
+		if self.dev.clearDatabase():
+			#return true if successful 
+			return True
+		else:
+			#return false if unsuccessful
+			return False
+
 	#function enrolls a fingerprint into the AS108M sensor
 	#takes a location as argument, can be 0-99
-	#CURRENTLY NOT WORKING, FAILURE ON compareCharacteristics FUNC
-	def enroll_fingerprint(self, fp_location=-1):
-		#scan first fingerprint and store in buffer 1
+	def enroll_fingerprint(self, fp_location=-1, fp_scan_timeout=10e3):
+		#create loop to scan fingerprint N number of times (as defined in config)
+		for i in range(1,params.NUM_OF_FINGERPRINT_SCANS+1):
+			printline("scanning fingerprint into buffer " + str(i))
+			#scan fingerprint, store in buffer i (1-5 max)
+			self.scan_fingerprint(fp_scan_timeout, i)
+			#sleep for a little bit so new fingerprint can be set on scanner
+			sleep_ms(1000)
+		#create new template from scanned fingerprint
+		self.dev.createTemplate()
+		#store this newly created fingerprint
+		self.dev.storeTemplate(positionNumber=fp_location, charBufferNumber=self.BUFF1)
+		return True
+
+		#old code that didnt work well
+		"""
 		if self.scan_fingerprint(10e3, self.BUFF1):
 			#see if fingerprint is already enrolled in device
-			if self.match_fingerprint():
-				printline("fingerprint already enrolled")
-				return 1
+			#if self.match_fingerprint():
+			#	printline("fingerprint already enrolled")
+			#	return 1
 			#if not enrolled
-			else:
-				#wait 1 second
-				sleep_ms(1000)
-				#scan the same fingerprint again and store in buffer 2
-				if self.scan_fingerprint(10e3, self.BUFF2):
-					#compare the two buffers
-					if self.dev.compareCharacteristics() == 0:
-						printline("fingerprints dont match")
-						return 0
-					else:
-						#create new template from scanned fingerprint
-						self.dev.createTemplate()
-						#store this newly created fingerprint
-						self.dev.storeTemplate(position_number=fp_location, charBufferNumber=self.BUFF1)
-						return True
+			#else:
+			#wait 1 second
+			sleep_ms(1000)
+			#scan the same fingerprint again and store in buffer 2
+			if self.scan_fingerprint(10e3, self.BUFF2):
+				#compare the two buffers
+				if self.dev.compareCharacteristics() == 0:
+					printline("fingerprints dont match")
+					return 0
 				else:
-					printline("scan failed")
-					return None
+					#create new template from scanned fingerprint
+					self.dev.createTemplate()
+					#store this newly created fingerprint
+					self.dev.storeTemplate(positionNumber=fp_location, charBufferNumber=self.BUFF1)
+					return True
+			else:
+				printline("scan failed")
+				return None
 		else:
 			printline("scan failed")
 			return None
+		"""
 
 	#enables power going into fingerprint sensor (turns oon FET)
 	def enable(self):
