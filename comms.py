@@ -10,6 +10,7 @@ from time import sleep_ms, ticks_ms, ticks_diff
 from config import communication_configuration as commconf
 from dev_funcs import printline
 
+
 #class to handle wifi communications
 class Dev_WiFi:
 	def __init__(self, wifi_credentials):
@@ -133,7 +134,14 @@ class Dev_WiFi:
 
 	#function to handle webserver traffic
 	#should be run in a loop as this function is non blocking
-	def listen_serve_webserver(self):
+	def listen_serve_webserver(self, file_io_inst=None):
+		#from file_funcs import FileIO
+		#check if file_io instance is real
+		if not isinstance(file_io_inst, FileIO):
+			#if its not real, create a new file_io instance (necessary to return device info)
+			file_io_inst = FileIO()
+
+		#array to store data returned by HTML forms
 		return_data = []
 		#accept websocket connection, get connection object and address
 		conn, addr = self.websocket.accept()
@@ -142,44 +150,64 @@ class Dev_WiFi:
 		request = conn.recv(1024)
 		#turn received data into a string
 		request = str(request)
+		#print request data
   		printline("Content = %s" % request)
+  		#form an empty response
   		response = ""
+
+  		#begin to search for keywords indicating the url path being requested
+  		#most of the paths will be within 0 to 21 characters of the start of string
+  		#if path is /favicon.ico 	(serves browser icon)
   		if 21 > request.find("/favicon.ico") > 0:
   			printline("favicon served : " + str(request.find("/favicon.ico")))
+  			#open favicon.ico file
   			favi_file = open("favicon.ico", 'r')
+  			#read in data from file and update response
   			response = favi_file.read()
 
+  		#if path is /config/	(serves config form to update system variables)
   		elif 21 > request.find("/config/") > 0:
   			printline("config served : " + str(request.find("/config/")))
 			#craft response to send to client
-			response = "<html>" + self.head_html() + self.config_html() + "</html>"
+			response = "<html>" + self.head_html() + self.config_html(file_io_inst) + "</html>"
 
+		#if path is /handle_config/	(handles data from config form)
 		elif 21 > request.find("/handle_config/") > 0:
   			printline("handle_config served : " + str(request.find("/handle_config/")))
-
+  			#get ssid value data from key in request string
   			new_ssid = self.get_var_from_string(request, 'ssid')
+  			#if variable is now populated
   			if new_ssid != "":
+  				#append this data to "return data" array
 				return_data.append({"network_ssid": new_ssid})
-
+			#get password value data from key in request string
   			new_password = self.get_var_from_string(request, 'password')
+  			#if variable is now populated
   			if new_password != "":
+  				#append this data to "return data" array
 				return_data.append({"network_password": new_password})
-
+			#get start quiet hour value data from key in request string
   			new_start_quiet = self.get_var_from_string(request, 'start_quiet')
+  			#if variable is now populated
   			if new_start_quiet != "":
+  				#append this data to "return data" array
 				return_data.append({"quiet_hour_start": new_start_quiet})
-
+			#get end quiet hour value data from key in request string
   			new_end_quiet = self.get_var_from_string(request, 'end_quiet')
+  			#if variable is now populated
   			if new_end_quiet != "":
+  				#append this data to "return data" array
 				return_data.append({"quiet_hour_end": new_end_quiet})
 
 			#craft response to send to client
 			response = "<html>" + self.head_html() + \
-			self.config_html("<h2>Your settings have been updated</h2>") + "</html>"
+			self.config_html(file_io_inst, "<h2>Your settings have been updated</h2>") + "</html>"
 
+		#if no path, serve index response
 		else:
 			#craft response to send to client
 			response = "<html>" + self.head_html() + self.index_html() + "</html>"
+
 		#send header data to client
 		conn.send("HTTP/1.1 200 OK\n")
 		conn.send("Content-Type: text/html\n")
@@ -188,8 +216,13 @@ class Dev_WiFi:
 		conn.sendall(response)
 		#close socket connection
 		conn.close()
-
-
+		#check if data in return array
+		if len(return_data) > 0:
+			#return populated array
+			return return_data
+		else:
+			#otherwise return nothing
+			return None
 
 	#function to generate header html
 	def head_html(self):
@@ -200,11 +233,19 @@ class Dev_WiFi:
 			"""
 
 	#function to generate body html
-	def config_html(self, extra_text=""):
+	def config_html(self, file_io_inst, extra_text=""):
+		wifi_networks = ""
+		for network in file_io_inst.wifi_networks:
+			wifi_networks += "<p>- " + network["ssid"] + "</p><br>"
+		quiet_hours = "<p>Quiet hours set from " + file_io_inst.quiet_hours["start_time"] + ":00 to " +\
+					file_io_inst.quiet_hours["end_time"] + ":00 hours</p><br>"
 		content = """
 				<body>
 				"""
-		content += extra_text + \
+		content += "<h3>"+extra_text+"</h3><br>" + \
+				"<h2>Current Stored Data</h2><hr><br>" + \
+				"<h3>Stored WiFi Networks</h3><br>" + wifi_networks + \
+				"<h3>Current Stored Data</h3><br>" + quiet_hours + "<hr>"\
 			"""
 					<form action="/handle_config/" method="post">
 						<h3>Network credential to add</h3>
@@ -260,8 +301,11 @@ class Dev_Blutooth:
 
 #class to handle cellular communications
 class Dev_Cell:
-	def __init__():
+	def __init__(self):
 		return None
+
+	def start_cellular(self):
+		return False
 
 #function to handle device message replies
 #takes message type argument and string reply

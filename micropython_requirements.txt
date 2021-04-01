@@ -1,0 +1,3 @@
+adafruit-circuitpython-ssd1306==2.11.2
+adafruit-ampy==1.1.0
+adafruit-circuitpython-busdevice==5.0.6

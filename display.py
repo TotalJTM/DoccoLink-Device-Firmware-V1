@@ -87,8 +87,12 @@ class Display:
 		new_display_text = [""]
 		#move through the split text array
 		for seg in split_text:
+			#if newline character seen
+			if seg == "\n":
+				#make a new line
+				new_display_text.append("")
 			#if the current index+new word is greater than 16 (max char per line)
-			if (len(new_display_text[-1])+len(seg)+1) <= 16:
+			elif (len(new_display_text[-1])+len(seg)+1) <= 16:
 				#add word to current index
 				new_display_text[-1] = new_display_text[-1] + ' ' + seg
 			else:

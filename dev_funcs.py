@@ -190,7 +190,19 @@ class Recorded_Time:
 		#update system time variable with current values
 		self.sys_time_at_creation =	time.localtime()
 
-
+	#function to offset time (minutes arg is only implemented portion)
+	def offset_time(self, years=0, months=0, days=0, hours=0, mins=0, seconds=0):
+		#check if mins overflows 60 mins
+		if mins+self.minute >= 60:
+			#correct for this
+			self.minute = self.minute + (mins%60)
+			self.hour += mins//60
+			#check if hours is now overflowed
+			if self.hour >= 24:
+				self.day += self.hour//24
+				self.hour = self.hour%24
+		else:
+			self.minute += mins
 
 #function to turn datetime string into object
 #datetime format is 2021-03-25T08:27:30.969

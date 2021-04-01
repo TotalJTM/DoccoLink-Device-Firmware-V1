@@ -65,3 +65,6 @@ class extra_params:
 	#number of fingerprint reads to enroll patient fingerprint
 	#MUST BE 1-5, CANNOT EXCEED 5
 	NUM_OF_FINGERPRINT_SCANS 	= const(5)
+	#Duration device will sleep between use cycles (in minutes, not seconds or ms)
+	#conversion to ms handled in main.py
+	DEEPSLEEP_DURATION			= const(60)

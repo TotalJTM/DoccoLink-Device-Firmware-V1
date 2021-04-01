@@ -25,6 +25,7 @@ class FileIO:
 		self.wifi_networks = pdata["wifi_params"]
 		self.appointments = pdata["appointments"]
 		self.last_known_time = pdata["device_info"]["last_known_time"]
+		self.quiet_hours = pdata["device_info"]["quiet_hours"]
 
 	#function to print basic device info
 	def print_dev_data(self):
@@ -32,7 +33,7 @@ class FileIO:
 		ts = "Device " + str(self.dev_id) + " | Firmware version: " + \
 		str(self.firm_version)
 		#print constructed string
-		printline(ts)
+		print(ts)
 
 	#function to update time in json file with current time
 	#takes a Recorded_Time instance (preferred) or a string (not as good)
@@ -53,6 +54,20 @@ class FileIO:
 		read_in_data = json.loads(self.read_in_file())
 		#rewrite last_known_time
 		read_in_data["device_info"]["last_known_time"] = new_time
+		#dump the json data to the file saver func, reload local vars from json file
+		self.write_to_file(json.dumps(read_in_data))
+		self.load_local_vars()
+
+	def update_quiet_hours(self, start=None, end=None):
+		#define new quiet hours json
+		quiet_hours = 	{
+								"start_time": start,
+								"end_time": end
+							}
+		#read in data from file
+		read_in_data = json.loads(self.read_in_file())
+		#rewrite old unmodified quiet hours entry (preserves all data)
+		read_in_data["device_info"]["quiet_hours"] = quiet_hours
 		#dump the json data to the file saver func, reload local vars from json file
 		self.write_to_file(json.dumps(read_in_data))
 		self.load_local_vars()

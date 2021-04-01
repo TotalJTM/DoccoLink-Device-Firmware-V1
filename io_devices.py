@@ -74,15 +74,15 @@ class Buttons:
 		#create dict of values to return
 		ret_arr = {'yes': False, 'no': False, 'select': False}
 		#check if yes pin is LOW
-		if yes_pin.value() == 0:
+		if self.yes_pin.value() == 0:
 			#change yes reply to True
 			ret_arr['yes'] = True
 		#check if no pin is LOW
-		if no_pin.value() == 0:
+		if self.no_pin.value() == 0:
 			#change no reply to True
 			ret_arr['no'] = True
 		#check if select pin is LOW
-		if sel_pin.value() == 0:
+		if self.sel_pin.value() == 0:
 			#change select reply to True
 			ret_arr['select'] = True
 		#send back ret_arr
@@ -271,7 +271,7 @@ class Fingerprint:
 class Batt_Level:
 	def __init__(self):
 		self.val_pin = Pin(pconf.BATT_VAL)
-		self.batt = ADC(val_pin)
+		self.batt = ADC(self.val_pin)
 
 	#function to calculate battery level from voltage divider read by ADC input
 	def get_batt_level(self):
