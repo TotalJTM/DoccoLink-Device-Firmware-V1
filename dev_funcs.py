@@ -57,7 +57,10 @@ class Recorded_Time:
 	#	self.second = second
 	def __init__(self, datetime_string):
 		#split string into time and date sections
-		split_data = datetime_string.split('T')
+		if datetime_string.find('T') >= 0:
+			split_data = datetime_string.split('T')
+		else:
+			split_data = datetime_string.split(' ')
 		#split date information
 		pdate = split_data[0].split('-')
 		#split time information
@@ -83,7 +86,7 @@ class Recorded_Time:
 		else:
 			rstring += str(self.month)
 		#add character to seperate month from day
-		rstring += ":"
+		rstring += "-"
 		#if day is less than 10, add zero to front of day
 		if self.day < 10:
 			rstring += "0" + str(self.day)
@@ -203,6 +206,133 @@ class Recorded_Time:
 				self.hour = self.hour%24
 		else:
 			self.minute += mins
+
+	#function that compares current time to given datetime_string
+	#returns a dict of 
+	def compare_time(self, datetime_string):
+		#split string into time and date sections
+		if datetime_string.find('T') >= 0:
+			split_data = datetime_string.split('T')
+		else:
+			split_data = datetime_string.split(' ')
+		#split date information
+		pdate = split_data[0].split('-')
+		#split time information
+		ptime = split_data[1].split(':')
+		#store all of this info as seperate local vars
+		c_year = int(pdate[0])
+		c_month = int(pdate[1])
+		c_day = int(pdate[2])
+		c_hour = int(ptime[0])
+		c_minute = int(ptime[1])
+		c_second = int(float(ptime[2]))
+		#get the difference between current time and datetime_string
+		c_year = c_year-self.year
+		c_month = c_month-self.month
+		c_day = c_day-self.day
+		c_hour = c_hour-self.hour
+		c_minute = c_minute-self.minute
+		c_second = c_second-self.second
+		#if any of these values overflow (with a positive num in front)
+		#adjust the numbers
+		#has to be written this way so negative values persist if time is behind current time
+		"""if c_year > 0 and c_month < 0:
+			c_year -= 1
+			c_month += 12
+
+		if c_month > 0 and c_day < 0:
+			c_month -= 1
+			c_day += 31
+
+		if c_day > 0 and c_hour < 0:
+			c_day -= 1
+			c_hour += 24
+
+		if c_hour > 0 and c_minute < 0:
+			c_hour -= 1
+			c_minute += 60
+
+		if c_minute > 0 and c_second < 0:
+			c_minute -= 1
+			c_second += 60
+		"""
+		if c_second < 0:
+			c_minute -= 1
+			c_second += 60
+
+		if c_minute < 0:
+			c_hour -= 1
+			c_minute += 60
+
+		if c_hour < 0:
+			c_day -= 1
+			c_hour += 24
+			
+		if c_day < 0:
+			c_month -= 1
+			c_day += 31
+
+		if c_month < 0:
+			c_year -= 1
+			c_month += 12
+		#check if any of the values are negative (indicates appt has past)
+		appt_passed = False
+		if c_year < 0 or c_month < 0 or c_day < 0 or c_hour < 0 or c_minute < 0 or c_second < 0:
+			appt_passed = True
+		#printline(str(c_year) + " | " + str(c_month) + " | " + str(c_day) + " T " +\
+		#	str(c_hour) + " | " + str(c_minute) + " | " + str(c_second))
+		#return a dict of values
+		return {
+				"year": c_year,
+				"month": c_month,
+				"day": c_day,
+				"hour": c_hour,
+				"minute": c_minute,
+				"second": c_second,
+				"appointment_passed": appt_passed
+				}
+
+	def check_if_appt_reminder_necessary(self, appt):
+		remind = False
+		answer1 = None
+		answer2 = None
+		answer3 = None
+		highest_ans = 0
+
+		for answer in appt.answers:
+			if answer["number"] == 1:
+				answer1 = answer
+			if answer["number"] == 2:
+				answer2 = answer
+			if answer["number"] == 3:
+				answer3 = answer
+
+		if answer1:
+			highest_ans = 1
+		if answer2:
+			highest_ans = 2
+		if answer3:
+			highest_ans = 3
+
+		appt_diff = self.compare_time(appt.appointment_date_time)
+		appt_hour_diff = appt_diff["hour"] + (appt_diff["day"]*24)
+		printline(str(appt_hour_diff) + " hours until appt")
+
+		if appt_diff["year"] == 0 and appt_diff["month"] == 0:
+			"""if appt_diff["day"] <= 2 and appt_diff["day"] > 1 and answer1 is None:
+				return True, 1
+			if appt_diff["day"] <= 1 and appt_diff["day"] > 0 and answer2 is None:
+				return True, 2
+			if appt_diff["day"] == 0 and appt_diff["hour"] <= 5 and answer3 is None:
+				return True, 3"""
+			if appt_hour_diff <= 48 and appt_hour_diff > 24 and answer1 is None:
+				return True, 1
+			if appt_hour_diff <= 24 and appt_hour_diff > 5 and answer2 is None:
+				return True, 2
+			if appt_hour_diff <= 5 and appt_hour_diff >= 0 and answer3 is None:
+				return True, 3
+
+		return False, None
 
 #function to turn datetime string into object
 #datetime format is 2021-03-25T08:27:30.969

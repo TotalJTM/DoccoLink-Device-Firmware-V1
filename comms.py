@@ -8,7 +8,7 @@ import usocket as socket
 from machine import UART
 from time import sleep_ms, ticks_ms, ticks_diff
 from config import communication_configuration as commconf
-from dev_funcs import printline
+from dev_funcs import printline, Recorded_Time
 
 
 #class to handle wifi communications
@@ -56,6 +56,7 @@ class Dev_WiFi:
 	#message should be a JSON string
 	def send_message(self, method, url, message = None, json = None):
 		#makes request to given URL
+		printline(json)
 		data = urequests.request(method, url, data=message, json=json)
 		#try to return json data, if no json exists then continue
 		try:
@@ -327,7 +328,7 @@ def handle_message_replies(message_type, reply):
 				#create temp location for current data
 				tappt = reply[i+1]["fields"]
 				#make new Appointment object from data and append that to the list
-				appointments.append(Appointment(tappt["appointment_id"], \
+				appointments.append(Appointment(tappt["appointment_ID"], \
 					tappt["answer"], tappt["appointment_start_date_time"], tappt["cancelled"]))
 			#return true, datetime and list of Appointment objects
 			return True, datetime, appointments
@@ -415,13 +416,20 @@ class Dev_Message:
 	def get_json(self):
 		#if there is an appointment object
 		if self.appointment is not None:
+			newest_answer = None
+			highest_answer = 0
+			for answer in self.appointment.answers:
+				if answer["number"] > highest_answer:
+					newest_answer = answer
+					highest_answer = answer["number"]
+
 			#include appointment information in formatted JSON message (appt update format)
 			formatted_json ={ 	
 								"device_id": self.device_id,
 								"device_password": self.device_password,
 								"appointment_id": self.appointment.appointment_id,
-								"answer": self.appointment.answer,
-								"response_date_time": self.appointment.appointment_date_time,
+								"answer": newest_answer["answer"],
+								"response_date_time": newest_answer["time_answered"],
 								"device_battery_level": self.battery_level
 							}
 		else:
@@ -435,16 +443,32 @@ class Dev_Message:
 		return formatted_json
 
 	#function to add appointment information to this message
-	def include_appointment(self, appointment_obj):
+	def include_appointment_answer(self, appointment_obj):
 		self.appointment = appointment_obj
 
 #class to store appointment information in a cleanly formatted way
 class Appointment:
-	def __init__(self, appointment_id, answer, appointment_date_time, cancelled=False):
+	def __init__(self, appointment_id, answers, appointment_date_time, cancelled=False):
 		self.appointment_id = appointment_id
-		self.answer = answer
+		self.answers = answers
 		self.appointment_date_time = appointment_date_time
 		self.cancelled = cancelled
+
+	def get_formatted_date_and_time(self):
+		temp = Recorded_Time(self.appointment_date_time)
+		r_date = str(temp.month) + "/" + str(temp.day) + "/" + str(temp.year)
+		r_time = str((temp.hour%12)) + ":"
+		if temp.hour == 12 or temp.hour == 0:
+			r_time = "12:"
+		if temp.minute < 10:
+			r_time += "0" + str(temp.minute)
+		else:
+			r_time += str(temp.minute)
+		if temp.hour - 12 < 0:
+			r_time += " AM"
+		else:
+			r_time += " PM"
+		return r_date, r_time
 
 #class to handle serial communications input and output
 class Computer_Comms:

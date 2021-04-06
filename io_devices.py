@@ -3,6 +3,7 @@ This file stores the classes and functions pertaining to the input output device
 """
 from config import pin_configuration as pconf
 from config import extra_params as params
+from config import buzzer_configuration as buzzconf
 from dev_funcs import printline
 from machine import Pin, PWM, ADC, SPI, UART
 from time import sleep_ms, ticks_ms, ticks_diff
@@ -12,8 +13,6 @@ import pyfingerprint
 #class to define the buzzer onboard
 #create the buzzer object and call short_buzz (as func) or buzz (in uasyncio event loop)
 class Buzzer:
-	#get buzzer configuration
-	from config import buzzer_configuration as buzzconf
 
 	def __init__(self):
 		#define buzzer pin object
@@ -31,12 +30,13 @@ class Buzzer:
 	#deactivate the buzzer by deinitializing PWM, making none and turning pin off
 	def deactivate(self):
 		#deactivate PWM object, make None instead
-		self.buzzer.deinit()
-		self.buzzer = None
-		#turn buzzer pin off
-		self.buzz_pin.off()
+		if self.buzzer is not None:
+			self.buzzer.deinit()
+			self.buzzer = None
+			#turn buzzer pin off
+			self.buzz_pin.off()
 
-	#buzz the buzzer at given tone, tone duration and time between buzzing
+	"""#buzz the buzzer at given tone, tone duration and time between buzzing
 	async def buzz(self):
 		#run forever until task is destroyed
 		while True:
@@ -50,6 +50,26 @@ class Buzzer:
 			self.deactivate()
 			#wait for WAIT duration (while buzzer off)
 			await uasyncio.sleep_ms(buzzconf.WAIT)
+	"""
+	#function to start buzzer timer and define initial state
+	#must be called before update_buzz
+	def start_buzz(self):
+		#record current time
+		self.last_time = ticks_ms()
+		self.on = False
+
+	#function to handle turning on and off the buzzer at regular intervals
+	def update_buzz(self):
+		if self.on:
+			if (ticks_diff(ticks_ms(),self.last_time) > (buzzconf.TONE_LENGTH)):
+				self.on = False
+				self.last_time = ticks_ms()
+				self.deactivate()
+		else:
+			if (ticks_diff(ticks_ms(),self.last_time) > (buzzconf.WAIT)):
+				self.on = True
+				self.last_time = ticks_ms()
+				self.activate()
 
 	#buzz the buzzer for duration (in ms)
 	def short_buzz(self, duration):

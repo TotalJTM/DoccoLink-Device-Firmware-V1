@@ -68,3 +68,8 @@ class extra_params:
 	#Duration device will sleep between use cycles (in minutes, not seconds or ms)
 	#conversion to ms handled in main.py
 	DEEPSLEEP_DURATION			= const(60)
+	#time (in ms) that device will wait for patient to respond to appt notification
+	#when this duration is exceeded, device will go back to deepsleep if no appt confirmation
+	ACTIVE_RESPONSE_WINDOW		= 30e3
+	#fingerprint match value threshold
+	FP_MATCH_THRESHOLD			= 30

@@ -82,7 +82,7 @@ class FileIO:
 		appt_to_add = 	{
 							"appointment_id": int(new_appt.appointment_id),
 							"appointment_date_time": new_appt.appointment_date_time,
-							"answer" : new_appt.answer
+							"answers" : []
 						}
 		#append new appointment onto appointment JSON obj
 		appointments.append(appt_to_add)
@@ -113,21 +113,82 @@ class FileIO:
 
 	#function to get appoint data stored in data.json
 	#returns None (if no appts) or an array of Appointment objects
-	def get_appointments(self):
-		#create new array for resulting objects
-		aptts_arr = []
-		#go through appointments json
-		for appt in self.appointments:
-			#create new appointment with json data
-			new_appt = Appointment(appt["appointment_id"],appt["answer"],appt["appointment_date_time"])
-			#add newly created Appointment obj to list to return
-			appts_arr.append(new_appt)
-		#if the list has items in it, return the arr
-		if len(aptts_arr) > 0:
-			return aptts_arr
-		#otherwise return None so program can properly handle that
-		else:
+	def get_appointments(self, appt_id=None):
+		if appt_id:
+			for appt in self.appointments:
+				if appt["appointment_id"] == appt_id:
+					return Appointment(appt["appointment_id"],appt["answers"],appt["appointment_date_time"])
 			return None
+		else:
+			#create new array for resulting objects
+			appts_arr = []
+			#go through appointments json
+			for appt in self.appointments:
+				#create new appointment with json data
+				new_appt = Appointment(appt["appointment_id"],appt["answers"],appt["appointment_date_time"])
+				#add newly created Appointment obj to list to return
+				appts_arr.append(new_appt)
+			#return the array
+			return appts_arr
+
+	#function adds an appointment answer to the specified appt
+	#takes an appt id (int), an answer (True,False,None), and a Recorded_Time object
+	def new_appointment_answer(self, appointment_id, answer, currtime, answer_number):
+		#read in data from file
+		read_in_data = json.loads(self.read_in_file())
+		#isolate the appointment data
+		appointments = read_in_data["appointments"]
+		#search through appointments for matching id
+		for appt in appointments:
+			if appt["appointment_id"] == appointment_id:
+				currtime.update_time()
+				new_answer = 	{
+								"answer": answer,
+								"time_answered": currtime.get_datetime_string(),
+								"number": answer_number,
+								"sent": False
+								}
+				appt["answers"].append(new_answer)
+		#rewrite old unmodified appointment entry (preserves all other data)
+		read_in_data["appointments"] = appointments
+		#dump the json data to the file saver func, reload local vars from json file
+		self.write_to_file(json.dumps(read_in_data))
+		self.load_local_vars()
+
+	def remove_appointment_answer(self, appointment_id):
+		#read in data from file
+		read_in_data = json.loads(self.read_in_file())
+		#isolate the appointment data
+		appointments = read_in_data["appointments"]
+		#search through appointments for matching id
+		for appt in appointments:
+			if appt["appointment_id"] == appointment_id:
+				appt["answers"] = []
+		#rewrite old unmodified appointment entry (preserves all other data)
+		read_in_data["appointments"] = appointments
+		#dump the json data to the file saver func, reload local vars from json file
+		self.write_to_file(json.dumps(read_in_data))
+		self.load_local_vars()
+
+	#updates answer status (change sent status from false to true)
+	def update_appointment_answer_status(self, appointment_id, status, number):
+		#read in data from file
+		read_in_data = json.loads(self.read_in_file())
+		#isolate the appointment data
+		appointments = read_in_data["appointments"]
+		#search through appointments for matching id
+		for appt in appointments:
+			if appt["appointment_id"] == appointment_id:
+				for answer in appt["answers"]:
+					if number == answer["number"]:
+						answer["sent"] = status
+						
+		#rewrite old unmodified appointment entry (preserves all other data)
+		read_in_data["appointments"] = appointments
+		#dump the json data to the file saver func, reload local vars from json file
+		self.write_to_file(json.dumps(read_in_data))
+		self.load_local_vars()
+
 
 		#function takes an ssid, password, adds wifi network to wifi params
 	def add_wifi_network(self, ssid, password):
