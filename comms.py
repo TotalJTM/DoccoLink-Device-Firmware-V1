@@ -57,7 +57,11 @@ class Dev_WiFi:
 	def send_message(self, method, url, message = None, json = None):
 		#makes request to given URL
 		printline(json)
-		data = urequests.request(method, url, data=message, json=json)
+		try:
+			data = urequests.request(method, url, data=message, json=json)
+		except:
+			printline("failed message request (WIFI)")
+			return "FAIL", None
 		#try to return json data, if no json exists then continue
 		try:
 			return "JSON", data.json()
@@ -70,7 +74,7 @@ class Dev_WiFi:
 				try:
 					return "RAW", data.content
 				except:
-					return None
+					return "FAIL", None
 
 	#function to send initial message to server
 	def send_initial_post(self, message_obj):
@@ -355,6 +359,10 @@ def handle_message_replies(message_type, reply):
 	#check if message type is RAW
 	if message_type == "RAW":
 		printline("raw content type received: " + str(reply))
+
+	#check for failed message send
+	if message_type == "FAIL":
+		return False, "FAIL", None
 
 """
 Device message JSON format

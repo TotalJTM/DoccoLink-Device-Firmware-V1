@@ -293,6 +293,9 @@ class Recorded_Time:
 				}
 
 	def check_if_appt_reminder_necessary(self, appt):
+		if appt.cancelled:
+			return False, None
+
 		remind = False
 		answer1 = None
 		answer2 = None

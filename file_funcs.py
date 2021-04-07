@@ -82,7 +82,8 @@ class FileIO:
 		appt_to_add = 	{
 							"appointment_id": int(new_appt.appointment_id),
 							"appointment_date_time": new_appt.appointment_date_time,
-							"answers" : []
+							"answers" : [],
+							"cancelled" : False
 						}
 		#append new appointment onto appointment JSON obj
 		appointments.append(appt_to_add)
@@ -117,7 +118,7 @@ class FileIO:
 		if appt_id:
 			for appt in self.appointments:
 				if appt["appointment_id"] == appt_id:
-					return Appointment(appt["appointment_id"],appt["answers"],appt["appointment_date_time"])
+					return Appointment(appt["appointment_id"],appt["answers"],appt["appointment_date_time"], appt["cancelled"])
 			return None
 		else:
 			#create new array for resulting objects
@@ -125,11 +126,41 @@ class FileIO:
 			#go through appointments json
 			for appt in self.appointments:
 				#create new appointment with json data
-				new_appt = Appointment(appt["appointment_id"],appt["answers"],appt["appointment_date_time"])
+				new_appt = Appointment(appt["appointment_id"],appt["answers"],appt["appointment_date_time"], appt["cancelled"])
 				#add newly created Appointment obj to list to return
 				appts_arr.append(new_appt)
 			#return the array
 			return appts_arr
+
+	def get_cancelled_appointments(self):
+		#create new array for resulting objects
+		appts_arr = []
+		#go through appointments json
+		for appt in self.appointments:
+			if appt.cancelled:
+				#create new appointment with json data
+				new_appt = Appointment(appt["appointment_id"],appt["answers"],appt["appointment_date_time"], appt["cancelled"])
+				#add newly created Appointment obj to list to return
+				appts_arr.append(new_appt)
+		#return the array
+		return appts_arr
+
+	def get_unsent_appointment_answers(self):
+		appts_arr = []
+		#go through appointments json
+		for appt in self.appointments:
+			for answer in appt["answers"]:
+				if answer["sent"] == False:
+					#create new appointment with json data
+					new_appt = Appointment(appt["appointment_id"],appt["answers"],appt["appointment_date_time"], appt["cancelled"])
+					highest_answer = 0
+					for i in appt["answers"]:
+						if i["number"] > highest_answer:
+							highest_answer = i["number"]
+					#add newly created Appointment obj to list to return
+					appts_arr.append([new_appt,highest_answer])
+		#return the array
+		return appts_arr
 
 	#function adds an appointment answer to the specified appt
 	#takes an appt id (int), an answer (True,False,None), and a Recorded_Time object
@@ -149,6 +180,21 @@ class FileIO:
 								"sent": False
 								}
 				appt["answers"].append(new_answer)
+		#rewrite old unmodified appointment entry (preserves all other data)
+		read_in_data["appointments"] = appointments
+		#dump the json data to the file saver func, reload local vars from json file
+		self.write_to_file(json.dumps(read_in_data))
+		self.load_local_vars()
+
+	def cancel_appointment(self, appointment_id):
+		#read in data from file
+		read_in_data = json.loads(self.read_in_file())
+		#isolate the appointment data
+		appointments = read_in_data["appointments"]
+		#search through appointments for matching id
+		for appt in appointments:
+			if appt["appointment_id"] == appointment_id:
+				appt["cancelled"] = True
 		#rewrite old unmodified appointment entry (preserves all other data)
 		read_in_data["appointments"] = appointments
 		#dump the json data to the file saver func, reload local vars from json file

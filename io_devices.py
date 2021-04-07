@@ -183,7 +183,10 @@ class Fingerprint:
 				#if successful read, set success to true
 				success = True
 				#convert image to characteristics and store in charbuffer1
-				self.dev.convertImage(charbuffer)
+				try:
+					self.dev.convertImage(charbuffer)
+				except:
+					printline("convertimage failure")
 			else:
 				#otherwise do nothing
 				pass
